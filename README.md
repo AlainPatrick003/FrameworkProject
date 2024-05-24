@@ -5,3 +5,6 @@
     qui se nomme Controller
     - Apres dans le fichier web.xml de notre projet, il faut ajouter un init-param pour indiquer au framework ou sont les controleurs qu'on a annoté. mettre comme param-name "controller-package" et comme param-value le package des controleurs
     
+
+*** SPRINT 2 ***
+-> Il faut annoter les methodes dans les controlleurs par l'annotation Get("nom-methode")

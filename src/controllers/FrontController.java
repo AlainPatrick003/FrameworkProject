@@ -2,8 +2,8 @@ package mg.itu.prom16.controller;
 
 import mg.itu.prom16.annotations.*;
 
-import java.util.List;
 import java.io.*;
+import java.lang.reflect.Method;
 import java.net.URLDecoder;
 import java.util.*;
 
@@ -11,29 +11,39 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import map.Mapping;
 
 public class FrontController extends HttpServlet {
     private List<String> controller = new ArrayList<>();
     private String controllerPackage;
     boolean checked = false;
+    HashMap<String, Mapping> lien = new HashMap<>();
 
     @Override
     public void init() throws ServletException {
         super.init();
         controllerPackage = getInitParameter("controller-package");
+        this.scan();
     }
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         PrintWriter out = response.getWriter();
-        if (!checked) {
-            scan();
-            checked = true;
+        String[] requestUrlSplitted = request.toString().split("/");
+        String controllerSearched = requestUrlSplitted[requestUrlSplitted.length-1];
+        
+        response.setContentType("text/html");
+
+        if (!lien.containsKey(controllerSearched)) {
+            out.println("<p>"+"Methode non trouver."+"</p>");
         }
-        out.println("Vos controlleurs : \n");
-        for (String className : controller) {
-            out.println(className);
+        else {
+            Mapping mapping = lien.get(controllerSearched);
+            
+            out.println("Methode trouvee dans " + mapping.getClassName());
+
         }
+        out.close();
     }
 
     @Override
@@ -63,11 +73,22 @@ public class FrontController extends HttpServlet {
                         try {
                             Class<?> classe = Class.forName(className);
                             if (classe.isAnnotationPresent(Controller.class)) {
-                                controller.add(className);
+                                controller.add(classe.getSimpleName());
+
+                                Method[] methodes = classe.getDeclaredMethods();
+
+                                for (Method methode : methodes) {
+                                    if (methode.isAnnotationPresent(Get.class)) {
+                                        Mapping map = new Mapping(className, methode.getName());
+                                        String valeur = methode.getAnnotation(Get.class).value();
+                                        lien.put(valeur, map);
+                                    }
+                                }
                             }
                         } catch (ClassNotFoundException e) {
                             e.printStackTrace();
                         }
+
                     }
                 }
             }
