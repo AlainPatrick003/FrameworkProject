@@ -1,6 +1,7 @@
-package mg.itu.prom16.controller;
+package mg.itu.prom16.controllers;
 
 import mg.itu.prom16.annotations.*;
+import mg.itu.prom16.map.Mapping;
 
 import java.io.*;
 import java.lang.reflect.Method;
@@ -11,7 +12,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import map.Mapping;
 
 public class FrontController extends HttpServlet {
     private List<String> controller = new ArrayList<>();
@@ -29,21 +29,29 @@ public class FrontController extends HttpServlet {
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         PrintWriter out = response.getWriter();
-        String[] requestUrlSplitted = request.toString().split("/");
-        String controllerSearched = requestUrlSplitted[requestUrlSplitted.length-1];
-        
+        String[] requestUrlSplitted = request.getRequestURL().toString().split("/");
+        String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
+
         response.setContentType("text/html");
 
         if (!lien.containsKey(controllerSearched)) {
-            out.println("<p>"+"Methode non trouver."+"</p>");
-        }
-        else {
+            out.println("<p>" + "Method not found." + "</p>");
+        } else {
             Mapping mapping = lien.get(controllerSearched);
-            
-            out.println("Methode trouvee dans " + mapping.getClassName());
+            out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + "</strong></br>");
+            try {
+                Class<?> classe = Class.forName(mapping.getClassName());
+                Object o = classe.getDeclaredConstructor().newInstance();
+                Method methode = classe.getDeclaredMethod(mapping.getMethodeName());
+                Object resultat = methode.invoke(o);
+                if (resultat != null) {
+                    out.println("resultat de la methode: " + resultat.toString());
+                }
+            } catch (Exception e) {
+                out.println(e.getStackTrace());
+            }
 
         }
-        out.close();
     }
 
     @Override
