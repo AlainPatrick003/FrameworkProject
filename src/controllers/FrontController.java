@@ -2,12 +2,14 @@ package mg.itu.prom16.controllers;
 
 import mg.itu.prom16.annotations.*;
 import mg.itu.prom16.map.Mapping;
+import mg.itu.prom16.views.ModelView;
 
 import java.io.*;
 import java.lang.reflect.Method;
 import java.net.URLDecoder;
 import java.util.*;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,6 +46,20 @@ public class FrontController extends HttpServlet {
                 Object o = classe.getDeclaredConstructor().newInstance();
                 Method methode = classe.getDeclaredMethod(mapping.getMethodeName());
                 Object resultat = methode.invoke(o);
+
+                if (resultat.getClass().getSimpleName().equalsIgnoreCase("ModelView")) {
+                    ModelView mv = (ModelView) resultat;
+                    RequestDispatcher dispath = request.getRequestDispatcher(mv.getUrl());
+                    Set<String> keys = mv.getData().keySet();
+                    for (String key : keys) {
+                        request.setAttribute(key, mv.getData().get(key));
+                        break;
+                    }
+
+                    dispath.forward(request, response);
+
+                }
+                
                 if (resultat != null) {
                     out.println("resultat de la methode: " + resultat.toString());
                 }
