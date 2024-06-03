@@ -47,7 +47,7 @@ public class FrontController extends HttpServlet {
                 Method methode = classe.getDeclaredMethod(mapping.getMethodeName());
                 Object resultat = methode.invoke(o);
 
-                if (resultat.getClass().getSimpleName().equalsIgnoreCase("ModelView")) {
+                if (resultat instanceof ModelView) {
                     ModelView mv = (ModelView) resultat;
                     RequestDispatcher dispath = request.getRequestDispatcher(mv.getUrl());
                     Set<String> keys = mv.getData().keySet();
