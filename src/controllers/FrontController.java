@@ -20,12 +20,17 @@ public class FrontController extends HttpServlet {
     private String controllerPackage;
     boolean checked = false;
     HashMap<String, Mapping> lien = new HashMap<>();
+    String error_message;
 
     @Override
     public void init() throws ServletException {
         super.init();
         controllerPackage = getInitParameter("controller-package");
-        this.scan();
+        try {
+            this.scan();
+        } catch (Exception e) {
+            error_message = e.getMessage();
+        }
     }
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -35,7 +40,10 @@ public class FrontController extends HttpServlet {
         String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
 
         response.setContentType("text/html");
-
+        if (error_message != null) {
+            out.println( "<h3 style= 'color:red'>" + error_message + "</h3>");
+            return;
+        }      
         if (!lien.containsKey(controllerSearched)) {
             out.println("<p>" + "Method not found." + "</p>");
         } else {
@@ -58,11 +66,14 @@ public class FrontController extends HttpServlet {
 
                     dispath.forward(request, response);
 
+                }else if (resultat instanceof String) {
+                    out.println("resultat de la methode: " + resultat.toString());
+                    
+                }else {
+                    out.println( "<h3 style= 'color:red'> Type de retour non reconnu!</h3>");
                 }
                 
-                if (resultat != null) {
-                    out.println("resultat de la methode: " + resultat.toString());
-                }
+                
             } catch (Exception e) {
                 out.println(e.getStackTrace());
             }
@@ -82,15 +93,20 @@ public class FrontController extends HttpServlet {
         processRequest(request, response);
     }
 
-    public void scan() {
+    public void scan() throws Exception{
         try {
+            if (controllerPackage == null) {
+                throw new Exception("controller-package null");
+                // error_message = ;
+                // return;
+            }
             String classesPath = getServletContext().getRealPath("/WEB-INF/classes");
             String decodedPath = URLDecoder.decode(classesPath, "UTF-8");
             String packagePath = decodedPath + "\\" + controllerPackage.replace('.', '\\');
             File packageDirectory = new File(packagePath);
             if (packageDirectory.exists() && packageDirectory.isDirectory()) {
                 File[] classFiles = packageDirectory.listFiles((dir, name) -> name.endsWith(".class"));
-                if (classFiles != null) {
+                if (classFiles != null || classFiles.length == 0) {
                     for (File classFile : classFiles) {
                         String className = controllerPackage + '.'
                                 + classFile.getName().substring(0, classFile.getName().length() - 6);
@@ -105,19 +121,27 @@ public class FrontController extends HttpServlet {
                                     if (methode.isAnnotationPresent(Get.class)) {
                                         Mapping map = new Mapping(className, methode.getName());
                                         String valeur = methode.getAnnotation(Get.class).value();
-                                        lien.put(valeur, map);
+                                        if (!lien.containsKey(valeur)) {
+                                            lien.put(valeur, map);
+                                            
+                                        }else{
+                                            throw new Exception("Methode '" + valeur + "' mifangaro");
+                                        }
                                     }
                                 }
                             }
-                        } catch (ClassNotFoundException e) {
-                            e.printStackTrace();
+                        } catch (Exception e) {
+                            throw e;
                         }
 
                     }
                 }
+            }else {
+                throw new Exception(packagePath + " n'existe pas ou n'est pas un dossier!");
+
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw e;
         }
     }
 }
