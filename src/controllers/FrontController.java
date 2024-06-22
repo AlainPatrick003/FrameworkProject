@@ -98,8 +98,7 @@ public class FrontController extends HttpServlet {
         try {
             if (controllerPackage == null) {
                 throw new Exception("controller-package null");
-                // error_message = ;
-                // return;
+                
             }
             String classesPath = getServletContext().getRealPath("/WEB-INF/classes");
             String decodedPath = URLDecoder.decode(classesPath, "UTF-8");
