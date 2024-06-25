@@ -3,6 +3,7 @@ package mg.itu.prom16.controllers;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.URLDecoder;
@@ -16,8 +17,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import mg.itu.prom16.annotations.Att;
 import mg.itu.prom16.annotations.Controller;
 import mg.itu.prom16.annotations.Get;
+import mg.itu.prom16.annotations.Model;
 import mg.itu.prom16.annotations.RequestParam;
 import mg.itu.prom16.map.Mapping;
 import mg.itu.prom16.views.ModelView;
@@ -62,12 +65,10 @@ public class FrontController extends HttpServlet {
                 Method methode = mapping.getMethodeName();
                 Object[] listeAttribut = null;
 
-                
-
                 if (methode.getParameterCount() > 0) {
                     Parameter[] liste_paramettre = methode.getParameters();
                     // construire la liste d'objet
-                    listeAttribut = getListeAttribut(liste_paramettre, request);
+                    listeAttribut = getListeAttribut(liste_paramettre, request, out);
                 }
 
                 Object resultat = methode.invoke(o, listeAttribut);
@@ -161,13 +162,30 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    public Object[] getListeAttribut(Parameter[] listeParamettre, HttpServletRequest request) {
+    public Object[] getListeAttribut(Parameter[] listeParamettre, HttpServletRequest request, PrintWriter out)
+            throws Exception {
         Object[] reponse = new Object[listeParamettre.length];
         int i = 0;
         for (Parameter parameter : listeParamettre) {
+            String value = "";
+            if (parameter.getType().isAnnotationPresent(Model.class)) {
+                // contruire une instance du model
+                Object obj = parameter.getType().getDeclaredConstructor().newInstance();
+                Field[] attributs = obj.getClass().getFields();
+                for (Field field : attributs) {
+                    field.setAccessible(true);
+                    if (field.isAnnotationPresent(Att.class)) {
+                        value = request.getParameter(field.getDeclaredAnnotation(Att.class).name());
+                        field.set(obj, caster(value, field.getType()));
+                    }
+                }
 
-            String value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
-            reponse[i] = caster(value, parameter.getType());
+                reponse[i] = obj;
+
+            } else {
+                value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
+                reponse[i] = caster(value, parameter.getType());
+            }
             i++;
         }
 
@@ -176,7 +194,6 @@ public class FrontController extends HttpServlet {
     }
 
     public Object caster(String value, Class<?> classe) {
-        
 
         if (classe == int.class || classe == Integer.class) {
             return Integer.parseInt(value);
