@@ -1,15 +1,19 @@
 package mg.itu.prom16.map;
 
+import java.lang.reflect.Method;
+
 public class Mapping {
     String className;
-    String methodeName;
+    Method methodeName;
 
-
-    public Mapping(String className, String methodeName) {
+    public Mapping(String className, Method methodeName) {
         this.className = className;
         this.methodeName = methodeName;
     }
-    
+
+    public Mapping() {
+    }
+
     public String getClassName() {
         return className;
     }
@@ -18,11 +22,13 @@ public class Mapping {
         this.className = className;
     }
 
-    public String getMethodeName() {
+    public Method getMethodeName() {
         return methodeName;
     }
 
-    public void setMethodeName(String methodeName) {
+    public void setMethodeName(Method methodeName) {
         this.methodeName = methodeName;
     }
+
+    
 }

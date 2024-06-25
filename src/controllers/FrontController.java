@@ -1,19 +1,26 @@
 package mg.itu.prom16.controllers;
 
-import mg.itu.prom16.annotations.*;
-import mg.itu.prom16.map.Mapping;
-import mg.itu.prom16.views.ModelView;
-
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.URLDecoder;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Set;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import mg.itu.prom16.annotations.Controller;
+import mg.itu.prom16.annotations.Get;
+import mg.itu.prom16.annotations.RequestParam;
+import mg.itu.prom16.map.Mapping;
+import mg.itu.prom16.views.ModelView;
 
 public class FrontController extends HttpServlet {
     private List<String> controller = new ArrayList<>();
@@ -41,9 +48,9 @@ public class FrontController extends HttpServlet {
 
         response.setContentType("text/html");
         if (error_message != null) {
-            out.println( "<h3 style= 'color:red'>" + error_message + "</h3>");
+            out.println("<h3 style= 'color:red'>" + error_message + "</h3>");
             return;
-        }      
+        }
         if (!lien.containsKey(controllerSearched)) {
             out.println("<p>" + "Method not found." + "</p>");
         } else {
@@ -52,8 +59,18 @@ public class FrontController extends HttpServlet {
             try {
                 Class<?> classe = Class.forName(mapping.getClassName());
                 Object o = classe.getDeclaredConstructor().newInstance();
-                Method methode = classe.getDeclaredMethod(mapping.getMethodeName());
-                Object resultat = methode.invoke(o);
+                Method methode = mapping.getMethodeName();
+                Object[] listeAttribut = null;
+
+                
+
+                if (methode.getParameterCount() > 0) {
+                    Parameter[] liste_paramettre = methode.getParameters();
+                    // construire la liste d'objet
+                    listeAttribut = getListeAttribut(liste_paramettre, request);
+                }
+
+                Object resultat = methode.invoke(o, listeAttribut);
 
                 if (resultat instanceof ModelView) {
                     ModelView mv = (ModelView) resultat;
@@ -67,16 +84,15 @@ public class FrontController extends HttpServlet {
 
                     dispath.forward(request, response);
 
-                }else if (resultat instanceof String) {
+                } else if (resultat instanceof String) {
                     out.println("resultat de la methode: " + resultat.toString());
-                    
-                }else {
-                    out.println( "<h3 style= 'color:red'> Type de retour non reconnu!</h3>");
+
+                } else {
+                    out.println("<h3 style= 'color:red'> Type de retour non reconnu!</h3>");
                 }
-                
-                
+
             } catch (Exception e) {
-                out.println(e.getStackTrace());
+                e.getStackTrace();
             }
 
         }
@@ -94,11 +110,11 @@ public class FrontController extends HttpServlet {
         processRequest(request, response);
     }
 
-    public void scan() throws Exception{
+    public void scan() throws Exception {
         try {
             if (controllerPackage == null) {
                 throw new Exception("controller-package null");
-                
+
             }
             String classesPath = getServletContext().getRealPath("/WEB-INF/classes");
             String decodedPath = URLDecoder.decode(classesPath, "UTF-8");
@@ -119,12 +135,12 @@ public class FrontController extends HttpServlet {
 
                                 for (Method methode : methodes) {
                                     if (methode.isAnnotationPresent(Get.class)) {
-                                        Mapping map = new Mapping(className, methode.getName());
+                                        Mapping map = new Mapping(className, methode);
                                         String valeur = methode.getAnnotation(Get.class).value();
                                         if (!lien.containsKey(valeur)) {
                                             lien.put(valeur, map);
-                                            
-                                        }else{
+
+                                        } else {
                                             throw new Exception("Methode '" + valeur + "' mifangaro");
                                         }
                                     }
@@ -136,7 +152,7 @@ public class FrontController extends HttpServlet {
 
                     }
                 }
-            }else {
+            } else {
                 throw new Exception(packagePath + " n'existe pas ou n'est pas un dossier!");
 
             }
@@ -145,5 +161,45 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    
+    public Object[] getListeAttribut(Parameter[] listeParamettre, HttpServletRequest request) {
+        Object[] reponse = new Object[listeParamettre.length];
+        int i = 0;
+        for (Parameter parameter : listeParamettre) {
+
+            String value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
+            reponse[i] = caster(value, parameter.getType());
+            i++;
+        }
+
+        return reponse;
+
+    }
+
+    public Object caster(String value, Class<?> classe) {
+        
+
+        if (classe == int.class || classe == Integer.class) {
+            return Integer.parseInt(value);
+        } else if (classe == long.class || classe == Long.class) {
+            return Long.parseLong(value);
+        } else if (classe == double.class || classe == Double.class) {
+            return Double.parseDouble(value);
+        } else if (classe == float.class || classe == Float.class) {
+            return Float.parseFloat(value);
+        } else if (classe == boolean.class || classe == Boolean.class) {
+            return Boolean.parseBoolean(value);
+        } else if (classe == byte.class || classe == Byte.class) {
+            return Byte.parseByte(value);
+        } else if (classe == short.class || classe == Short.class) {
+            return Short.parseShort(value);
+        } else if (classe == char.class || classe == Character.class) {
+            if (value.length() != 1) {
+                throw new IllegalArgumentException("Cannot convert string to char: " + value);
+            }
+            return value.charAt(0);
+        } else {
+            return value;
+        }
+
+    }
 }
