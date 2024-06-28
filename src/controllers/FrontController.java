@@ -7,6 +7,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.URLDecoder;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -58,7 +59,7 @@ public class FrontController extends HttpServlet {
             out.println("<p>" + "Method not found." + "</p>");
         } else {
             Mapping mapping = lien.get(controllerSearched);
-            out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + "</strong></br>");
+            // out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + "</strong></br>");
             try {
                 Class<?> classe = Class.forName(mapping.getClassName());
                 Object o = classe.getDeclaredConstructor().newInstance();
@@ -93,7 +94,8 @@ public class FrontController extends HttpServlet {
                 }
 
             } catch (Exception e) {
-                e.getStackTrace();
+                // e.getStackTrace();
+                out.print("<h3 style= 'color:red'>" + e.getMessage() + "</h3>");
             }
 
         }
@@ -168,6 +170,9 @@ public class FrontController extends HttpServlet {
         int i = 0;
         for (Parameter parameter : listeParamettre) {
             String value = "";
+            if (!parameter.isAnnotationPresent(RequestParam.class)) {
+                throw new Exception("ETU2714 ==> Misy attribut tsy annoté\n");
+            }
             if (parameter.getType().isAnnotationPresent(Model.class)) {
                 // contruire une instance du model
                 Object obj = parameter.getType().getDeclaredConstructor().newInstance();
@@ -176,6 +181,9 @@ public class FrontController extends HttpServlet {
                     field.setAccessible(true);
                     if (field.isAnnotationPresent(Att.class)) {
                         value = request.getParameter(field.getDeclaredAnnotation(Att.class).name());
+                        field.set(obj, caster(value, field.getType()));
+                    } else {
+                        value = request.getParameter(field.getName());
                         field.set(obj, caster(value, field.getType()));
                     }
                 }
@@ -214,6 +222,8 @@ public class FrontController extends HttpServlet {
                 throw new IllegalArgumentException("Cannot convert string to char: " + value);
             }
             return value.charAt(0);
+        } else if (classe == LocalDate.class) {
+            return LocalDate.parse(value);
         } else {
             return value;
         }
