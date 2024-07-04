@@ -18,6 +18,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import mg.itu.prom16.annotations.Att;
 import mg.itu.prom16.annotations.Controller;
 import mg.itu.prom16.annotations.Get;
@@ -25,6 +26,7 @@ import mg.itu.prom16.annotations.Model;
 import mg.itu.prom16.annotations.RequestParam;
 import mg.itu.prom16.map.Mapping;
 import mg.itu.prom16.views.ModelView;
+import mg.itu.prom16.session.CustomSession;
 
 public class FrontController extends HttpServlet {
     private List<String> controller = new ArrayList<>();
@@ -59,10 +61,25 @@ public class FrontController extends HttpServlet {
             out.println("<p>" + "Method not found." + "</p>");
         } else {
             Mapping mapping = lien.get(controllerSearched);
-            // out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + "</strong></br>");
+            // out.println("Methode trouvée dans: <strong> " + mapping.getClassName() +
+            // "</strong></br>");
             try {
                 Class<?> classe = Class.forName(mapping.getClassName());
                 Object o = classe.getDeclaredConstructor().newInstance();
+                Field[] fields = classe.getDeclaredFields();
+
+                for (Field field : fields) {
+                    if (field.getType().equals(CustomSession.class)) {
+                        CustomSession cs = new CustomSession(request.getSession());
+                        field.setAccessible(true);
+                        if (field.get(o) == null) {
+                            field.set(o, cs);
+                        }
+
+                        field.setAccessible(false);
+                    }
+                }
+
                 Method methode = mapping.getMethodeName();
                 Object[] listeAttribut = null;
 
@@ -71,7 +88,6 @@ public class FrontController extends HttpServlet {
                     // construire la liste d'objet
                     listeAttribut = getListeAttribut(liste_paramettre, request, out);
                 }
-
                 Object resultat = methode.invoke(o, listeAttribut);
 
                 if (resultat instanceof ModelView) {
@@ -95,7 +111,7 @@ public class FrontController extends HttpServlet {
 
             } catch (Exception e) {
                 // e.getStackTrace();
-                out.print("<h3 style= 'color:red'>" + e.getMessage() + "</h3>");
+                out.print("<h3 style= 'color:red'>" + e + "</h3>");
             }
 
         }
@@ -166,11 +182,13 @@ public class FrontController extends HttpServlet {
 
     public Object[] getListeAttribut(Parameter[] listeParamettre, HttpServletRequest request, PrintWriter out)
             throws Exception {
+
         Object[] reponse = new Object[listeParamettre.length];
         int i = 0;
         for (Parameter parameter : listeParamettre) {
             String value = "";
-            if (!parameter.isAnnotationPresent(RequestParam.class)) {
+            if (!parameter.isAnnotationPresent(RequestParam.class)
+                && !parameter.getType().equals(CustomSession.class)) {
                 throw new Exception("ETU2714 ==> Misy attribut tsy annoté\n");
             }
             if (parameter.getType().isAnnotationPresent(Model.class)) {
@@ -186,13 +204,21 @@ public class FrontController extends HttpServlet {
                         value = request.getParameter(field.getName());
                         field.set(obj, caster(value, field.getType()));
                     }
+
+                    field.setAccessible(false);
                 }
 
                 reponse[i] = obj;
 
-            } else {
-                value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
-                reponse[i] = caster(value, parameter.getType());
+            } 
+            else {
+                if (parameter.getType().equals(CustomSession.class)) {
+                    reponse[i] = new CustomSession(request.getSession());
+                }else {
+                    value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
+                    reponse[i] = caster(value, parameter.getType());
+
+                }
             }
             i++;
         }
