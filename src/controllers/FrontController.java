@@ -24,9 +24,11 @@ import mg.itu.prom16.annotations.Controller;
 import mg.itu.prom16.annotations.Get;
 import mg.itu.prom16.annotations.Model;
 import mg.itu.prom16.annotations.RequestParam;
+import mg.itu.prom16.annotations.RestAPI;
 import mg.itu.prom16.map.Mapping;
 import mg.itu.prom16.views.ModelView;
 import mg.itu.prom16.session.CustomSession;
+import mg.itu.prom16.annotations.RestAPI;
 
 public class FrontController extends HttpServlet {
     private List<String> controller = new ArrayList<>();
@@ -48,6 +50,7 @@ public class FrontController extends HttpServlet {
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        request.setContentType("text/json");
         PrintWriter out = response.getWriter();
         String[] requestUrlSplitted = request.getRequestURL().toString().split("/");
         String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
@@ -100,7 +103,15 @@ public class FrontController extends HttpServlet {
                         // ..
                     }
 
-                    dispath.forward(request, response);
+                    if (this.isRestAPI(o, methode.getName())) {
+                        String jsonResponse = gson.toJson(mv.getData());
+                        out.println(jsonResponse);
+                        
+                    }else {
+
+                        dispath.forward(request, response);
+                    }
+
 
                 } else if (resultat instanceof String) {
                     out.println("resultat de la methode: " + resultat.toString());
@@ -256,5 +267,18 @@ public class FrontController extends HttpServlet {
 
         //done
 
+    }
+
+    public boolean isRestAPI(Object obj,String methodName){
+        Method[] methods = obj.getClass().getDeclaredMethods();
+        for (Method method : methods) {
+            if (method.getName().equals(methodName)) {
+                if (method.isAnnotationPresent(RestAPI.class)) {
+                    return true;
+                }
+                break;
+            }
+        }
+        return false;
     }
 }
