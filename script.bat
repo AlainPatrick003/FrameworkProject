@@ -13,6 +13,10 @@ echo "construction du fichier jar"
 jar cfe "lib\front-controller.jar" -c "mg"
 echo "construction terminer"
 
+set "framework=E:\Documents\S4\Mr Naina\SPRINT\FrameworkProject\lib"
+
+copy "%framework%\front-controller.jar" "E:\Documents\S5\Mr Naina\Projet\TestFramework\lib"
+
 if exist "out" (
     rmdir /s /q "out"
 )
