@@ -18,7 +18,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import mg.itu.prom16.annotations.Att;
 import mg.itu.prom16.annotations.Controller;
 import mg.itu.prom16.annotations.Get;
@@ -27,8 +26,11 @@ import mg.itu.prom16.annotations.RequestParam;
 import mg.itu.prom16.map.Mapping;
 import mg.itu.prom16.views.ModelView;
 import mg.itu.prom16.session.CustomSession;
+import mg.itu.prom16.annotations.RestAPI;
+import com.google.gson.Gson;
 
 public class FrontController extends HttpServlet {
+
     private List<String> controller = new ArrayList<>();
     private String controllerPackage;
     boolean checked = false;
@@ -48,6 +50,7 @@ public class FrontController extends HttpServlet {
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        Gson gson = new Gson();
         PrintWriter out = response.getWriter();
         String[] requestUrlSplitted = request.getRequestURL().toString().split("/");
         String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
@@ -90,6 +93,7 @@ public class FrontController extends HttpServlet {
                 }
                 Object resultat = methode.invoke(o, listeAttribut);
 
+                response.setContentType("text/json");
                 if (resultat instanceof ModelView) {
                     ModelView mv = (ModelView) resultat;
                     RequestDispatcher dispath = request.getRequestDispatcher(mv.getUrl());
@@ -100,18 +104,25 @@ public class FrontController extends HttpServlet {
                         // ..
                     }
 
-                    dispath.forward(request, response);
+                    if (this.isRestAPI(o, methode.getName())) {
+                        String jsonResponse = gson.toJson(mv.getData());
+                        out.println(jsonResponse);
 
-                } else if (resultat instanceof String) {
-                    out.println("resultat de la methode: " + resultat.toString());
+                    } else {
+
+                        dispath.forward(request, response);
+                    }
 
                 } else {
-                    out.println("<h3 style= 'color:red'> Type de retour non reconnu!</h3>");
-                }
+                    // out.println("resultat de la methode: " + resultat.toString());
+                    String jsonResponse = gson.toJson(resultat);
+                    out.println(jsonResponse);
+
+                } 
 
             } catch (Exception e) {
                 // e.getStackTrace();
-                out.print("<h3 style= 'color:red'>" + e + "</h3>");
+                out.print("erreur: <h3 style= 'color:red'>" + e + "</h3>");
             }
 
         }
@@ -188,7 +199,7 @@ public class FrontController extends HttpServlet {
         for (Parameter parameter : listeParamettre) {
             String value = "";
             if (!parameter.isAnnotationPresent(RequestParam.class)
-                && !parameter.getType().equals(CustomSession.class)) {
+                    && !parameter.getType().equals(CustomSession.class)) {
                 throw new Exception("ETU2714 ==> Misy attribut tsy annoté\n");
             }
             if (parameter.getType().isAnnotationPresent(Model.class)) {
@@ -210,11 +221,10 @@ public class FrontController extends HttpServlet {
 
                 reponse[i] = obj;
 
-            } 
-            else {
+            } else {
                 if (parameter.getType().equals(CustomSession.class)) {
                     reponse[i] = new CustomSession(request.getSession());
-                }else {
+                } else {
                     value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
                     reponse[i] = caster(value, parameter.getType());
 
@@ -255,6 +265,18 @@ public class FrontController extends HttpServlet {
         }
 
         //done
+    }
 
+    public boolean isRestAPI(Object obj, String methodName) {
+        Method[] methods = obj.getClass().getDeclaredMethods();
+        for (Method method : methods) {
+            if (method.getName().equals(methodName)) {
+                if (method.isAnnotationPresent(RestAPI.class)) {
+                    return true;
+                }
+                break;
+            }
+        }
+        return false;
     }
 }
