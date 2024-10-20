@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 public class Mapping {
     String className;
     Method methodeName;
+    String verb;
 
     public Mapping(String className, Method methodeName) {
         this.className = className;
