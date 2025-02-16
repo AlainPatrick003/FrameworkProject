@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
+import com.google.gson.Gson;
+
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -20,14 +22,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mg.itu.prom16.annotations.Att;
 import mg.itu.prom16.annotations.Controller;
-import mg.itu.prom16.annotations.Get;
 import mg.itu.prom16.annotations.Model;
+import mg.itu.prom16.annotations.Post;
 import mg.itu.prom16.annotations.RequestParam;
-import mg.itu.prom16.map.Mapping;
-import mg.itu.prom16.views.ModelView;
-import mg.itu.prom16.session.CustomSession;
 import mg.itu.prom16.annotations.RestAPI;
-import com.google.gson.Gson;
+import mg.itu.prom16.annotations.Url;
+import mg.itu.prom16.map.Mapping;
+import mg.itu.prom16.session.CustomSession;
+import mg.itu.prom16.util.VerbMethod;
+import mg.itu.prom16.views.ModelView;
 
 public class FrontController extends HttpServlet {
 
@@ -64,9 +67,32 @@ public class FrontController extends HttpServlet {
             out.println("<p>" + "Method not found." + "</p>");
         } else {
             Mapping mapping = lien.get(controllerSearched);
-            // out.println("Methode trouvée dans: <strong> " + mapping.getClassName() +
-            // "</strong></br>");
+            Method methode = null;
+            // out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + " nombre de methode = "
+            //         + mapping.getListeVerbMethode().get(0).getMethode().getName() +
+            //         "</strong></br>");
+            String verb = null;
+
+            for (VerbMethod verbMethode : mapping.getListeVerbMethode()) {
+                // out.println(verbMethode.getMethode() + " != " + request.getMethod() + "</br>");
+                if (verbMethode.getVerb().equals(request.getMethod())) {
+                    verb = verbMethode.getVerb();
+                    methode = verbMethode.getMethode();
+                }
+            }
+
+            if (verb == null) {
+                // throw new Exception("Tsisy letyh ehh");
+                out.println("Tsisy letyh ehh");
+
+            }
+
+            // if (!request.getMethod().equals(mapping.getVerb())) {
+            // // error_message = "Tsy mitovy lessy ehh";
+            // out.println("Erreur: <strong> Tsy mitovy lessy ehh</strong></br>");
+            // }
             try {
+
                 Class<?> classe = Class.forName(mapping.getClassName());
                 Object o = classe.getDeclaredConstructor().newInstance();
                 Field[] fields = classe.getDeclaredFields();
@@ -83,7 +109,6 @@ public class FrontController extends HttpServlet {
                     }
                 }
 
-                Method methode = mapping.getMethodeName();
                 Object[] listeAttribut = null;
 
                 if (methode.getParameterCount() > 0) {
@@ -118,7 +143,7 @@ public class FrontController extends HttpServlet {
                     String jsonResponse = gson.toJson(resultat);
                     out.println(jsonResponse);
 
-                } 
+                }
 
             } catch (Exception e) {
                 // e.getStackTrace();
@@ -161,18 +186,44 @@ public class FrontController extends HttpServlet {
                             if (classe.isAnnotationPresent(Controller.class)) {
                                 controller.add(classe.getSimpleName());
 
-                                Method[] methodes = classe.getDeclaredMethods();
+                                Method[] methodes = classe.getDeclaredMethods(); // Methodes rehetra ao anatin'ny
+                                                                                 // controleur
 
                                 for (Method methode : methodes) {
-                                    if (methode.isAnnotationPresent(Get.class)) {
-                                        Mapping map = new Mapping(className, methode);
-                                        String valeur = methode.getAnnotation(Get.class).value();
-                                        if (!lien.containsKey(valeur)) {
+                                    if (methode.isAnnotationPresent(Url.class)) { // Raha misy Url
+                                        // Mapping map = new Mapping(className, methode);
+                                        Mapping map = new Mapping(className);
+                                        String verb = "GET"; // Get par defaut
+
+                                        if (methode.isAnnotationPresent(Post.class)) {
+                                            // map.setVerb("POST");
+                                            verb = "POST";
+                                        }
+                                        String valeur = methode.getAnnotation(Url.class).value(); // Maka ny url
+                                                                                                  // andehanany
+                                        VerbMethod vm = new VerbMethod(methode, verb);
+
+                                        if (!lien.containsKey(valeur)) { // raha mbola tsy misy
+                                            map.addVerbMethode(vm);
                                             lien.put(valeur, map);
 
                                         } else {
-                                            throw new Exception("Methode '" + valeur + "' mifangaro");
+                                            // throw new Exception("Methode '" + valeur + "' mifangaro");
+                                            Mapping mapping = lien.get(valeur);
+                                            if (mapping.contient(vm)) {
+                                                throw new Exception(
+                                                        "L'url apparait plusieur fois avec la meme methode ");
+                                            }
+
+                                            mapping.addVerbMethode(vm);
+
                                         }
+                                        // if (!lien.containsKey(valeur)) {
+                                        // lien.put(valeur, map);
+
+                                        // } else {
+                                        // throw new Exception("Methode '" + valeur + "' mifangaro");
+                                        // }
                                     }
                                 }
                             }
@@ -264,7 +315,7 @@ public class FrontController extends HttpServlet {
             return value;
         }
 
-        //done
+        // done
     }
 
     public boolean isRestAPI(Object obj, String methodName) {
