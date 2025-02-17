@@ -15,7 +15,8 @@ echo "construction terminer"
 
 set "framework=E:\Documents\S4\Mr Naina\SPRINT\FrameworkProject\lib"
 
-copy "%framework%\front-controller.jar" "E:\Documents\S5\Mr Naina\Projet\TestFramework\lib"
+
+copy ".\lib\front-controller.jar" "E:\Documents\S5\Mr Naina\Projet\TestFramework\lib"
 
 if exist "out" (
     rmdir /s /q "out"
