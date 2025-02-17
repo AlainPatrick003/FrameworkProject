@@ -66,18 +66,20 @@ public class FrontController extends HttpServlet {
         if (!lien.containsKey(controllerSearched)) {
             out.println("<p>" + "Method not found." + "</p>");
         } else {
+            System.out.println("Controleur serchead = " + controllerSearched);
             Mapping mapping = lien.get(controllerSearched);
             Method methode = null;
-            // out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + " nombre de methode = "
-            //         + mapping.getListeVerbMethode().get(0).getMethode().getName() +
-            //         "</strong></br>");
+            out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + " nombre de methode = "
+                    + mapping.getListeVerbMethode().size() +
+                    "</strong></br>");
             String verb = null;
 
             for (VerbMethod verbMethode : mapping.getListeVerbMethode()) {
-                // out.println(verbMethode.getMethode() + " != " + request.getMethod() + "</br>");
                 if (verbMethode.getVerb().equals(request.getMethod())) {
+                    // out.println(verbMethode.getMethode() + " != " + request.getMethod() + " nom methode = " + verbMethode.getMethode() +"</br>");
                     verb = verbMethode.getVerb();
                     methode = verbMethode.getMethode();
+                    mapping.setClassName(verbMethode.getMethode().getDeclaringClass().getName());
                 }
             }
 
@@ -94,6 +96,7 @@ public class FrontController extends HttpServlet {
             try {
 
                 Class<?> classe = Class.forName(mapping.getClassName());
+                System.out.println("Classe maintenant = " + classe.getName());
                 Object o = classe.getDeclaredConstructor().newInstance();
                 Field[] fields = classe.getDeclaredFields();
 
@@ -147,6 +150,7 @@ public class FrontController extends HttpServlet {
 
             } catch (Exception e) {
                 // e.getStackTrace();
+                e.printStackTrace();
                 out.print("erreur: <h3 style= 'color:red'>" + e + "</h3>");
             }
 
@@ -166,6 +170,7 @@ public class FrontController extends HttpServlet {
     }
 
     public void scan() throws Exception {
+        System.out.println("Scaning");
         try {
             if (controllerPackage == null) {
                 throw new Exception("controller-package null");
@@ -218,12 +223,6 @@ public class FrontController extends HttpServlet {
                                             mapping.addVerbMethode(vm);
 
                                         }
-                                        // if (!lien.containsKey(valeur)) {
-                                        // lien.put(valeur, map);
-
-                                        // } else {
-                                        // throw new Exception("Methode '" + valeur + "' mifangaro");
-                                        // }
                                     }
                                 }
                             }
