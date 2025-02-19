@@ -7,7 +7,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.net.URLDecoder;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +16,7 @@ import com.google.gson.Gson;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,13 +25,15 @@ import mg.itu.prom16.annotations.Controller;
 import mg.itu.prom16.annotations.Model;
 import mg.itu.prom16.annotations.Post;
 import mg.itu.prom16.annotations.RequestParam;
-import mg.itu.prom16.annotations.RestAPI;
 import mg.itu.prom16.annotations.Url;
 import mg.itu.prom16.map.Mapping;
 import mg.itu.prom16.session.CustomSession;
+import mg.itu.prom16.util.FileUpload;
+import mg.itu.prom16.util.Utils;
 import mg.itu.prom16.util.VerbMethod;
 import mg.itu.prom16.views.ModelView;
 
+@MultipartConfig
 public class FrontController extends HttpServlet {
 
     private List<String> controller = new ArrayList<>();
@@ -61,38 +63,31 @@ public class FrontController extends HttpServlet {
         response.setContentType("text/html");
         if (error_message != null) {
             out.println("<h3 style= 'color:red'>" + error_message + "</h3>");
+            response.sendError(500, error_message);
             return;
         }
         if (!lien.containsKey(controllerSearched)) {
             out.println("<p>" + "Method not found." + "</p>");
+            // response.sendError(404, "Methode");
         } else {
-            System.out.println("Controleur serchead = " + controllerSearched);
             Mapping mapping = lien.get(controllerSearched);
             Method methode = null;
-            out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + " nombre de methode = "
-                    + mapping.getListeVerbMethode().size() +
-                    "</strong></br>");
+            // out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + "
+            // nombre de methode = "
+            // + mapping.getListeVerbMethode().size() +
+            // "</strong></br>");
             String verb = null;
 
             for (VerbMethod verbMethode : mapping.getListeVerbMethode()) {
                 if (verbMethode.getVerb().equals(request.getMethod())) {
-                    // out.println(verbMethode.getMethode() + " != " + request.getMethod() + " nom methode = " + verbMethode.getMethode() +"</br>");
+                    // out.println(verbMethode.getMethode() + " != " + request.getMethod() + " nom
+                    // methode = " + verbMethode.getMethode() +"</br>");
                     verb = verbMethode.getVerb();
                     methode = verbMethode.getMethode();
                     mapping.setClassName(verbMethode.getMethode().getDeclaringClass().getName());
                 }
             }
 
-            if (verb == null) {
-                // throw new Exception("Tsisy letyh ehh");
-                out.println("Tsisy letyh ehh");
-
-            }
-
-            // if (!request.getMethod().equals(mapping.getVerb())) {
-            // // error_message = "Tsy mitovy lessy ehh";
-            // out.println("Erreur: <strong> Tsy mitovy lessy ehh</strong></br>");
-            // }
             try {
 
                 Class<?> classe = Class.forName(mapping.getClassName());
@@ -132,7 +127,7 @@ public class FrontController extends HttpServlet {
                         // ..
                     }
 
-                    if (this.isRestAPI(o, methode.getName())) {
+                    if (Utils.isRestAPI(o, methode.getName())) {
                         String jsonResponse = gson.toJson(mv.getData());
                         out.println(jsonResponse);
 
@@ -152,6 +147,7 @@ public class FrontController extends HttpServlet {
                 // e.getStackTrace();
                 e.printStackTrace();
                 out.print("erreur: <h3 style= 'color:red'>" + e + "</h3>");
+                response.sendError(500, e.getMessage());
             }
 
         }
@@ -260,10 +256,10 @@ public class FrontController extends HttpServlet {
                     field.setAccessible(true);
                     if (field.isAnnotationPresent(Att.class)) {
                         value = request.getParameter(field.getDeclaredAnnotation(Att.class).name());
-                        field.set(obj, caster(value, field.getType()));
+                        field.set(obj, Utils.caster(value, field.getType()));
                     } else {
                         value = request.getParameter(field.getName());
-                        field.set(obj, caster(value, field.getType()));
+                        field.set(obj, Utils.caster(value, field.getType()));
                     }
 
                     field.setAccessible(false);
@@ -274,9 +270,14 @@ public class FrontController extends HttpServlet {
             } else {
                 if (parameter.getType().equals(CustomSession.class)) {
                     reponse[i] = new CustomSession(request.getSession());
-                } else {
+                }else if(parameter.getType().equals(FileUpload.class)){
+                    String paramName = parameter.getDeclaredAnnotation(RequestParam.class).name();
+                    System.out.println("ParamName = " + paramName);
+                    reponse[i] = Utils.handleFileUpload(request, paramName);
+                } 
+                else {
                     value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
-                    reponse[i] = caster(value, parameter.getType());
+                    reponse[i] = Utils.caster(value, parameter.getType());
 
                 }
             }
@@ -287,46 +288,4 @@ public class FrontController extends HttpServlet {
 
     }
 
-    public Object caster(String value, Class<?> classe) {
-
-        if (classe == int.class || classe == Integer.class) {
-            return Integer.parseInt(value);
-        } else if (classe == long.class || classe == Long.class) {
-            return Long.parseLong(value);
-        } else if (classe == double.class || classe == Double.class) {
-            return Double.parseDouble(value);
-        } else if (classe == float.class || classe == Float.class) {
-            return Float.parseFloat(value);
-        } else if (classe == boolean.class || classe == Boolean.class) {
-            return Boolean.parseBoolean(value);
-        } else if (classe == byte.class || classe == Byte.class) {
-            return Byte.parseByte(value);
-        } else if (classe == short.class || classe == Short.class) {
-            return Short.parseShort(value);
-        } else if (classe == char.class || classe == Character.class) {
-            if (value.length() != 1) {
-                throw new IllegalArgumentException("Cannot convert string to char: " + value);
-            }
-            return value.charAt(0);
-        } else if (classe == LocalDate.class) {
-            return LocalDate.parse(value);
-        } else {
-            return value;
-        }
-
-        // done
-    }
-
-    public boolean isRestAPI(Object obj, String methodName) {
-        Method[] methods = obj.getClass().getDeclaredMethods();
-        for (Method method : methods) {
-            if (method.getName().equals(methodName)) {
-                if (method.isAnnotationPresent(RestAPI.class)) {
-                    return true;
-                }
-                break;
-            }
-        }
-        return false;
-    }
 }
