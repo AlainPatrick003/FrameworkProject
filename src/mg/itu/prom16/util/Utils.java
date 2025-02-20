@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 import mg.itu.prom16.annotations.RestAPI;
+import mg.itu.prom16.map.Mapping;
 import mg.itu.prom16.views.ModelView;
 
 public class Utils {
@@ -94,27 +95,44 @@ public class Utils {
     }
 
     public static void sendModelView(ModelView modelView, HttpServletRequest request, HttpServletResponse response)
-        throws ServletException, IOException {
+            throws ServletException, IOException {
         System.out.println(modelView.getUrl());
         for (Map.Entry<String, Object> entry : modelView.getData().entrySet()) {
             System.out.println("DATA ---");
             request.setAttribute(entry.getKey(), entry.getValue());
             System.out.println(entry.getKey() + "_" + entry.getValue());
         }
-        
+
         for (Map.Entry<String, String> errorEntry : modelView.getValidationErrors().entrySet()) {
             System.out.println("ValidationsErrors ---");
             request.setAttribute(errorEntry.getKey(), errorEntry.getValue());
             System.out.println(errorEntry.getKey() + " : " + errorEntry.getValue());
         }
-        
+
         for (Map.Entry<String, Object> valueEntry : modelView.getValidationValues().entrySet()) {
             System.out.println("ValidationsValues ---");
             request.setAttribute(valueEntry.getKey(), valueEntry.getValue());
-            System.out.println( valueEntry.getKey() + " : " + valueEntry.getValue());
+            System.out.println(valueEntry.getKey() + " : " + valueEntry.getValue());
         }
 
         RequestDispatcher dispatch = request.getRequestDispatcher(modelView.getUrl());
         dispatch.forward(request, response);
+    }
+
+    public static void checkAuthProfil(Mapping mapping, HttpServletRequest req, String hote_name)
+            throws Exception {
+        String hote = "auth";
+        if (hote_name != null && hote_name != "") {
+            hote = hote_name;
+        }
+
+
+        if (mapping.needAuth()) {
+            System.out.println(mapping.getProfil() + " != " + req.getSession().getAttribute(hote));
+            if (!mapping.getProfil().equals(req.getSession().getAttribute(hote))) {
+                // throw new CustomException.RequestException("unauthorize");
+                throw new Exception("Unauthorize");
+            }
+        }
     }
 }

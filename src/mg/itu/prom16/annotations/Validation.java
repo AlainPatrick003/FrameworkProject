@@ -25,7 +25,7 @@ public interface Validation {
 
         int max() default Integer.MAX_VALUE;
 
-        String message() default "La taille du champ doit être compris entre {min} et {max}.";
+        String message() default "La taille du champ doit être compris entre les valeurs min et max.";
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -33,7 +33,7 @@ public interface Validation {
     public @interface Min {
         long value();
 
-        String message() default "La valeur doit être supérieure ou égale à {value}.";
+        String message() default "La valeur doit être supérieure ou égale à la valeur min.";
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -41,7 +41,7 @@ public interface Validation {
     public @interface Max {
         long value();
 
-        String message() default "La valeur ne peut pas dépasser de {value}.";
+        String message() default "La valeur ne peut pas dépasser de la valeur max.";
     }
 
     @Retention(RetentionPolicy.RUNTIME)

@@ -7,9 +7,9 @@ import mg.itu.prom16.util.VerbMethod;
 
 public class Mapping {
     String className;
-    // Method methodeName;
-    // String verb;
     List<VerbMethod> listeVerbMethode = new ArrayList<>();
+    private boolean needAuth = false; // Une methode a besoin d'authentification
+    private String profil; // Profil demandee pour l'auth
 
     public Mapping(String className, List<VerbMethod> verbMethodes) {
         this.className = className;
@@ -18,6 +18,7 @@ public class Mapping {
 
     public Mapping() {
     }
+
     public Mapping(String className) {
         this.className = className;
     }
@@ -44,7 +45,8 @@ public class Mapping {
 
     public boolean contient(VerbMethod vm) {
         for (VerbMethod verbMethod : listeVerbMethode) {
-            if (verbMethod.getMethode().equals(vm.getMethode()) && verbMethod.getVerb().equalsIgnoreCase(vm.getVerb())) {
+            if (verbMethod.getMethode().equals(vm.getMethode())
+                    && verbMethod.getVerb().equalsIgnoreCase(vm.getVerb())) {
                 return true;
             }
         }
@@ -52,22 +54,36 @@ public class Mapping {
         return false;
     }
 
+    public String getProfil() {
+        return profil;
+    }
 
+    public void setProfil(String profil) {
+        this.profil = profil;
+    }
+
+    public boolean needAuth() {
+        return needAuth;
+    }
+
+    public void setNeedAuth(boolean needAuth) {
+        this.needAuth = needAuth;
+    }
 
     // public Method getMethodeName() {
-    //     return methodeName;
+    // return methodeName;
     // }
 
     // public void setMethodeName(Method methodeName) {
-    //     this.methodeName = methodeName;
+    // this.methodeName = methodeName;
     // }
 
     // public String getVerb() {
-    //     return verb;
+    // return verb;
     // }
 
     // public void setVerb(String verb) {
-    //     this.verb = verb;
+    // this.verb = verb;
     // }
-    
+
 }
