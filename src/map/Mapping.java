@@ -7,9 +7,11 @@ import mg.itu.prom16.util.VerbMethod;
 
 public class Mapping {
     String className;
-    // Method methodeName;
-    // String verb;
     List<VerbMethod> listeVerbMethode = new ArrayList<>();
+    private boolean needAuth=false;
+    private String profil;
+
+
 
     public Mapping(String className, List<VerbMethod> verbMethodes) {
         this.className = className;
@@ -50,6 +52,22 @@ public class Mapping {
         }
 
         return false;
+    }
+
+    public String getProfil() {
+        return profil;
+    }
+
+    public void setProfil(String profil) {
+        this.profil = profil;
+    }
+
+    public boolean needAuth() {
+        return needAuth;
+    }
+
+    public void setNeedAuth(boolean needAuth) {
+        this.needAuth = needAuth;
     }
 
 
