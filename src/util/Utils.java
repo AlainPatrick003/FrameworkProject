@@ -4,11 +4,15 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
+import java.util.Map;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 import mg.itu.prom16.annotations.RestAPI;
+import mg.itu.prom16.views.ModelView;
 
 public class Utils {
     public static FileUpload handleFileUpload(HttpServletRequest request, String inputFileParam)
@@ -89,5 +93,28 @@ public class Utils {
         return false;
     }
 
-    
+    public static void sendModelView(ModelView modelView, HttpServletRequest request, HttpServletResponse response)
+        throws ServletException, IOException {
+        System.out.println(modelView.getUrl());
+        for (Map.Entry<String, Object> entry : modelView.getData().entrySet()) {
+            System.out.println("DATA ---");
+            request.setAttribute(entry.getKey(), entry.getValue());
+            System.out.println(entry.getKey() + "_" + entry.getValue());
+        }
+        
+        for (Map.Entry<String, String> errorEntry : modelView.getValidationErrors().entrySet()) {
+            System.out.println("ValidationsErrors ---");
+            request.setAttribute(errorEntry.getKey(), errorEntry.getValue());
+            System.out.println(errorEntry.getKey() + " : " + errorEntry.getValue());
+        }
+        
+        for (Map.Entry<String, Object> valueEntry : modelView.getValidationValues().entrySet()) {
+            System.out.println("ValidationsValues ---");
+            request.setAttribute(valueEntry.getKey(), valueEntry.getValue());
+            System.out.println( valueEntry.getKey() + " : " + valueEntry.getValue());
+        }
+
+        RequestDispatcher dispatch = request.getRequestDispatcher(modelView.getUrl());
+        dispatch.forward(request, response);
+    }
 }

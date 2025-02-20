@@ -41,7 +41,7 @@ public interface Validation {
     public @interface Max {
         long value();
 
-        String message() default "La valeur ne peut pas dépasser {value}.";
+        String message() default "La valeur ne peut pas dépasser de {value}.";
     }
 
     @Retention(RetentionPolicy.RUNTIME)

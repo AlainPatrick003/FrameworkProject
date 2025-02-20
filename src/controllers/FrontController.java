@@ -10,6 +10,7 @@ import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.gson.Gson;
@@ -26,12 +27,11 @@ import mg.itu.prom16.annotations.Model;
 import mg.itu.prom16.annotations.Post;
 import mg.itu.prom16.annotations.RequestParam;
 import mg.itu.prom16.annotations.Url;
+import mg.itu.prom16.annotations.Validation.*;
 import mg.itu.prom16.map.Mapping;
 import mg.itu.prom16.session.CustomSession;
-import mg.itu.prom16.util.FileUpload;
-import mg.itu.prom16.util.Utils;
-import mg.itu.prom16.util.VerbMethod;
 import mg.itu.prom16.views.ModelView;
+import mg.itu.prom16.util.*;
 
 @MultipartConfig
 public class FrontController extends HttpServlet {
@@ -107,34 +107,35 @@ public class FrontController extends HttpServlet {
                     }
                 }
 
+                ParametreMethodes params = null;
                 Object[] listeAttribut = null;
-
                 if (methode.getParameterCount() > 0) {
+                    System.out.println("Mmiditra ato foana");
                     Parameter[] liste_paramettre = methode.getParameters();
                     // construire la liste d'objet
-                    listeAttribut = getListeAttribut(liste_paramettre, request, out);
+                    params = getListeAttribut(liste_paramettre, request, out);
+                    if (!params.getErrorMap().isEmpty()) {
+                        // Retrieve the previous ModelView from session if it exists
+                        ModelView previousModelView = (ModelView) request.getSession().getAttribute("page_precedent");
+                        System.out.println("Previous = " + previousModelView.getUrl());
+                        if (previousModelView != null) {
+                            previousModelView.mergeValidationErrors(params.getErrorMap());
+                            previousModelView.mergeValidationValues(params.getValueMap());
+                            Utils.sendModelView(previousModelView, request, response);
+                            // return previousModelView;
+                        }
+                    }
+                    listeAttribut = params.getMethodParams();
+
                 }
+
                 Object resultat = methode.invoke(o, listeAttribut);
 
                 response.setContentType("text/json");
                 if (resultat instanceof ModelView) {
-                    ModelView mv = (ModelView) resultat;
-                    RequestDispatcher dispath = request.getRequestDispatcher(mv.getUrl());
-                    Set<String> keys = mv.getData().keySet();
-                    for (String key : keys) {
-                        request.setAttribute(key, mv.getData().get(key));
-                        break;
-                        // ..
-                    }
-
-                    if (Utils.isRestAPI(o, methode.getName())) {
-                        String jsonResponse = gson.toJson(mv.getData());
-                        out.println(jsonResponse);
-
-                    } else {
-
-                        dispath.forward(request, response);
-                    }
+                    
+                    request.getSession().setAttribute("page_precedent", resultat);
+                    Utils.sendModelView((ModelView)resultat, request, response);
 
                 } else {
                     // out.println("resultat de la methode: " + resultat.toString());
@@ -237,13 +238,17 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    public Object[] getListeAttribut(Parameter[] listeParamettre, HttpServletRequest request, PrintWriter out)
+    public ParametreMethodes getListeAttribut(Parameter[] listeParamettre, HttpServletRequest request, PrintWriter out)
             throws Exception {
 
         Object[] reponse = new Object[listeParamettre.length];
+        ParametreMethodes params = null;
+        Map<String, String> errorMap = new HashMap<>();
+        Map<String, Object> valueMap = new HashMap<>();
         int i = 0;
         for (Parameter parameter : listeParamettre) {
             String value = "";
+            String paramName = "";
             if (!parameter.isAnnotationPresent(RequestParam.class)
                     && !parameter.getType().equals(CustomSession.class)) {
                 throw new Exception("ETU2714 ==> Misy attribut tsy annoté\n");
@@ -268,23 +273,47 @@ public class FrontController extends HttpServlet {
                 reponse[i] = obj;
 
             } else {
+                paramName = parameter.getDeclaredAnnotation(RequestParam.class).name();
                 if (parameter.getType().equals(CustomSession.class)) {
                     reponse[i] = new CustomSession(request.getSession());
-                }else if(parameter.getType().equals(FileUpload.class)){
-                    String paramName = parameter.getDeclaredAnnotation(RequestParam.class).name();
+                } else if (parameter.getType().equals(FileUpload.class)) {
+                    
                     System.out.println("ParamName = " + paramName);
                     reponse[i] = Utils.handleFileUpload(request, paramName);
-                } 
-                else {
+                } else {
                     value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
                     reponse[i] = Utils.caster(value, parameter.getType());
 
                 }
             }
+            // *** validation **//
+            if (parameter.isAnnotationPresent(Valid.class)) {
+                List<ResponseValidation> errors = mg.itu.prom16.util.Contraintes.validateObject(reponse[i]);
+                for (ResponseValidation responseValidation : errors) {
+                    if (!responseValidation.getErrors().isEmpty()) {
+                        errorMap.put("error_" + responseValidation.getInputName(),
+                                String.join(", ", responseValidation.getErrors()));
+                        valueMap.put("value_" + responseValidation.getInputName(),
+                                responseValidation.getValue());
+                    }
+                }
+            } else {
+                List<ResponseValidation> errors = mg.itu.prom16.util.Contraintes.valider(reponse[i],
+                        parameter.getAnnotations(),
+                        paramName);
+                if (!errors.get(0).getErrors().isEmpty()) {
+                    System.out.println("ERror_" + paramName);
+
+                    errorMap.put("error_" + paramName, String.join(", ", errors.get(0).getErrors()));
+                    valueMap.put("value_" + paramName, reponse[i]);
+                }
+            }
             i++;
         }
 
-        return reponse;
+        params = new ParametreMethodes(reponse, errorMap, valueMap);
+
+        return params;
 
     }
 

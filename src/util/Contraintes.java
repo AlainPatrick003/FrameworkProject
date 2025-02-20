@@ -146,9 +146,10 @@ public class Contraintes {
 
     // Méthode pour vérifier la validité d'un email
     private static boolean isValidEmail(Object obj) {
-        if (obj instanceof String) {
-            String value = (String) obj;
-            return value != null && value.matches("^[A-Za-z0-9+_.-]+@(.+)$");
+
+        if (obj instanceof String value) { // Utilisation du pattern matching (Java 14+)
+            System.out.println("Version ameliorer");
+            return value.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
         }
         return false;
     }
@@ -172,6 +173,7 @@ public class Contraintes {
         } else if (annotation instanceof Max max) {
             return max.message();
         } else if (annotation instanceof Email email) {
+            System.out.println(email.message());
             return email.message();
         } else if (annotation instanceof Pattern pattern) {
             return pattern.message();
