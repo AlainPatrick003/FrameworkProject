@@ -22,6 +22,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mg.itu.prom16.annotations.Att;
+import mg.itu.prom16.annotations.Auth;
 import mg.itu.prom16.annotations.Controller;
 import mg.itu.prom16.annotations.Model;
 import mg.itu.prom16.annotations.Post;
@@ -41,11 +42,13 @@ public class FrontController extends HttpServlet {
     boolean checked = false;
     HashMap<String, Mapping> lien = new HashMap<>();
     String error_message;
+    private String hote_name;
 
     @Override
     public void init() throws ServletException {
         super.init();
         controllerPackage = getInitParameter("controller-package");
+        this.hote_name = getInitParameter("auth");  
         try {
             this.scan();
         } catch (Exception e) {
@@ -59,6 +62,9 @@ public class FrontController extends HttpServlet {
         PrintWriter out = response.getWriter();
         String[] requestUrlSplitted = request.getRequestURL().toString().split("/");
         String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
+        // A effacer
+        request.getSession().setAttribute(this.hote_name, "admin");
+        // ******
 
         response.setContentType("text/html");
         if (error_message != null) {
@@ -128,7 +134,7 @@ public class FrontController extends HttpServlet {
                     listeAttribut = params.getMethodParams();
 
                 }
-
+                Utils.checkAuthProfil(mapping, request, hote_name);
                 Object resultat = methode.invoke(o, listeAttribut);
 
                 response.setContentType("text/json");
@@ -184,8 +190,14 @@ public class FrontController extends HttpServlet {
                         String className = controllerPackage + '.'
                                 + classFile.getName().substring(0, classFile.getName().length() - 6);
                         try {
+                            boolean needAuth = false;
+                            String profile = "";
                             Class<?> classe = Class.forName(className);
                             if (classe.isAnnotationPresent(Controller.class)) {
+                                if (classe.isAnnotationPresent(Auth.class)) {
+                                    needAuth = true;
+                                    profile = classe.getDeclaredAnnotation(Auth.class).value();
+                                }
                                 controller.add(classe.getSimpleName());
 
                                 Method[] methodes = classe.getDeclaredMethods(); // Methodes rehetra ao anatin'ny
@@ -207,6 +219,8 @@ public class FrontController extends HttpServlet {
 
                                         if (!lien.containsKey(valeur)) { // raha mbola tsy misy
                                             map.addVerbMethode(vm);
+                                            map.setNeedAuth(needAuth);
+                                            map.setProfil(profile);
                                             lien.put(valeur, map);
 
                                         } else {
