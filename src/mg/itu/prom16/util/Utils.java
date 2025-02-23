@@ -126,7 +126,6 @@ public class Utils {
             hote = hote_name;
         }
 
-
         if (mapping.needAuth()) {
             System.out.println(mapping.getProfil() + " != " + req.getSession().getAttribute(hote));
             if (!mapping.getProfil().equals(req.getSession().getAttribute(hote))) {
@@ -137,13 +136,9 @@ public class Utils {
     }
 
     public static String getSerarchedController(String url) {
-        System.out.println(url);
-        if (url.endsWith("/") || url.endsWith("\\")) {
-            return "";
-        }
         String[] requestUrlSplitted = url.split("/");
         String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
-        return controllerSearched;
+        return url.endsWith("/") ? "/" : url.endsWith("") ? "/" : url.endsWith("\\") ? "\\" : controllerSearched;
 
     }
 }
