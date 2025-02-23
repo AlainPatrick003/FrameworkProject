@@ -60,8 +60,9 @@ public class FrontController extends HttpServlet {
             throws ServletException, IOException {
         Gson gson = new Gson();
         PrintWriter out = response.getWriter();
-        String[] requestUrlSplitted = request.getRequestURL().toString().split("/");
-        String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
+        
+        String controllerSearched = Utils.getSerarchedController(request.getRequestURL().toString());
+        System.out.println("Controleur ici = " + controllerSearched);
         // A effacer
         request.getSession().setAttribute(this.hote_name, "admin");
         // ******
@@ -214,10 +215,11 @@ public class FrontController extends HttpServlet {
                                             verb = "POST";
                                         }
                                         String valeur = methode.getAnnotation(Url.class).value(); // Maka ny url
-                                                                                                  // andehanany
                                         VerbMethod vm = new VerbMethod(methode, verb);
-
+                                        
                                         if (!lien.containsKey(valeur)) { // raha mbola tsy misy
+                                            System.out.println("Damn == " + valeur);
+
                                             map.addVerbMethode(vm);
                                             map.setNeedAuth(needAuth);
                                             map.setProfil(profile);
