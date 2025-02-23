@@ -135,4 +135,15 @@ public class Utils {
             }
         }
     }
+
+    public static String getSerarchedController(String url) {
+        System.out.println(url);
+        if (url.endsWith("/") || url.endsWith("\\")) {
+            return "";
+        }
+        String[] requestUrlSplitted = url.split("/");
+        String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
+        return controllerSearched;
+
+    }
 }
