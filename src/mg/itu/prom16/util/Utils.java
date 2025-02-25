@@ -3,6 +3,7 @@ package mg.itu.prom16.util;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.time.LocalDate;
 import java.util.Map;
 
@@ -140,5 +141,35 @@ public class Utils {
         String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
         return url.endsWith("/") ? "/" : url.endsWith("\\") ? "\\" : controllerSearched;
 
+    }
+
+    public static void handleRedirect(Redirect redirect, HttpServletRequest request, HttpServletResponse response)
+            throws Exception {
+        String lien = redirect.getLien();
+        if (lien == null || lien.equalsIgnoreCase("")) {
+            return;
+        }
+        RequestDispatcher dispatch = request.getRequestDispatcher(lien);
+        request.setAttribute("isRedirection", true);
+        request.setAttribute("data_redirect", redirect.getData());
+        for (Map.Entry<String, Object> entry : redirect.getData().entrySet()) {
+            String cle = entry.getKey();
+            Object valeur = entry.getValue();
+            System.out.println("Clé : " + cle + ", Valeur : " + valeur);
+        }
+        dispatch.forward(request, response);
+
+    }
+
+    public static Redirect handleRedirectAttribute(Parameter parameter, HttpServletRequest request) throws Exception {
+        Redirect redirect = ((Redirect) parameter.getType().getDeclaredConstructor().newInstance());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = ((Map<String, Object>) request.getAttribute("data_redirect"));
+        data.forEach((cle, valeur) -> {
+            System.out.println(cle + " = " + valeur);
+        });
+        redirect.setData(data);
+        return redirect;
     }
 }
