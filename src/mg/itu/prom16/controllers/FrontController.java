@@ -86,9 +86,8 @@ public class FrontController extends HttpServlet {
             String verb = null;
 
             for (VerbMethod verbMethode : mapping.getListeVerbMethode()) {
-                if (verbMethode.getVerb().equals(request.getMethod())) {
-                    // out.println(verbMethode.getMethode() + " != " + request.getMethod() + " nom
-                    // methode = " + verbMethode.getMethode() +"</br>");
+                out.println(verbMethode.getMethode() + " != " + request.getMethod() + " nom // methode = " + verbMethode.getMethode() +"</br>");
+                if (verbMethode.getVerb().equalsIgnoreCase(request.getMethod())) {
                     verb = verbMethode.getVerb();
                     methode = verbMethode.getMethode();
                     mapping.setClassName(verbMethode.getMethode().getDeclaringClass().getName());

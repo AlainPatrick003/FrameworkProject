@@ -138,7 +138,7 @@ public class Utils {
     public static String getSerarchedController(String url) {
         String[] requestUrlSplitted = url.split("/");
         String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
-        return url.endsWith("/") ? "/" : url.endsWith("") ? "/" : url.endsWith("\\") ? "\\" : controllerSearched;
+        return url.endsWith("/") ? "/" : url.endsWith("\\") ? "\\" : controllerSearched;
 
     }
 }
