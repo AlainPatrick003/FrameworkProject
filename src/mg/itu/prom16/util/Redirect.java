@@ -34,6 +34,10 @@ public class Redirect {
         return this.lien;
     }
 
+    public void setLien(String lien) {
+        this.lien = lien;
+    }
+
     public Map<String, Object> getData() {
         return data;
     }

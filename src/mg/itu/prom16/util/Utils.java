@@ -146,17 +146,12 @@ public class Utils {
     public static void handleRedirect(Redirect redirect, HttpServletRequest request, HttpServletResponse response)
             throws Exception {
         String lien = redirect.getLien();
-        if (lien == null || lien.equalsIgnoreCase("")) {
+        if (lien == null) {
             return;
         }
         RequestDispatcher dispatch = request.getRequestDispatcher(lien);
         request.setAttribute("isRedirection", true);
         request.setAttribute("data_redirect", redirect.getData());
-        for (Map.Entry<String, Object> entry : redirect.getData().entrySet()) {
-            String cle = entry.getKey();
-            Object valeur = entry.getValue();
-            System.out.println("Clé : " + cle + ", Valeur : " + valeur);
-        }
         dispatch.forward(request, response);
 
     }
@@ -166,9 +161,6 @@ public class Utils {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> data = ((Map<String, Object>) request.getAttribute("data_redirect"));
-        data.forEach((cle, valeur) -> {
-            System.out.println(cle + " = " + valeur);
-        });
         redirect.setData(data);
         return redirect;
     }
