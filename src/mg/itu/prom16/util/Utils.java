@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import jakarta.servlet.RequestDispatcher;
@@ -53,6 +54,8 @@ public class Utils {
     }
 
     public static Object caster(String value, Class<?> classe) {
+        if (value == null || value.equalsIgnoreCase(""))
+            return null;
 
         if (classe == int.class || classe == Integer.class) {
             return Integer.parseInt(value);
@@ -75,6 +78,8 @@ public class Utils {
             return value.charAt(0);
         } else if (classe == LocalDate.class) {
             return LocalDate.parse(value);
+        } else if (classe == LocalDateTime.class) {
+            return LocalDateTime.parse(value);
         } else {
             return value;
         }
@@ -131,6 +136,7 @@ public class Utils {
             System.out.println(mapping.getProfil() + " != " + req.getSession().getAttribute(hote));
             if (!mapping.getProfil().equals(req.getSession().getAttribute(hote))) {
                 // throw new CustomException.RequestException("unauthorize");
+                System.out.println(mapping.getProfil() + "----!=----------" + req.getSession().getAttribute(hote));
                 throw new Exception("Unauthorize");
             }
         }

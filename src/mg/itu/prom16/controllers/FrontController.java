@@ -47,13 +47,14 @@ public class FrontController extends HttpServlet {
     boolean checked = false;
     HashMap<String, Mapping> lien = new HashMap<>();
     String error_message;
-    private String hote_name;
+    private static String hote_name;
 
     @Override
     public void init() throws ServletException {
         super.init();
         controllerPackage = getInitParameter("controller-package");
-        this.hote_name = getInitParameter("auth");
+        // exemple hote_name = "auth"
+        FrontController.hote_name = getInitParameter("auth");
         try {
             this.scan();
         } catch (Exception e) {
@@ -69,7 +70,7 @@ public class FrontController extends HttpServlet {
         String controllerSearched = Utils.getSerarchedController(request.getRequestURL().toString());
         System.out.println("Controleur ici = " + controllerSearched);
         // A effacer
-        request.getSession().setAttribute(this.hote_name, "admin");
+        // request.getSession().setAttribute(this.hote_name, "admin");
         // ******
 
         response.setContentType("text/html");
@@ -151,8 +152,7 @@ public class FrontController extends HttpServlet {
                     request.getSession().setAttribute("page_precedent", resultat);
                     Utils.sendModelView((ModelView) resultat, request, response);
 
-                }
-                if (resultat instanceof Redirect) {
+                } else if (resultat instanceof Redirect) {
                     // handleRedirect
                     Utils.handleRedirect(((Redirect) resultat), request, response);
                 } else {
@@ -281,15 +281,13 @@ public class FrontController extends HttpServlet {
             if (parameter.getType().isAnnotationPresent(Model.class)) {
                 // contruire une instance du model
                 Object obj = parameter.getType().getDeclaredConstructor().newInstance();
-                Field[] attributs = obj.getClass().getFields();
+                Field[] attributs = obj.getClass().getDeclaredFields();
                 for (Field field : attributs) {
                     field.setAccessible(true);
                     if (field.isAnnotationPresent(Att.class)) {
                         value = request.getParameter(field.getDeclaredAnnotation(Att.class).name());
                         field.set(obj, Utils.caster(value, field.getType()));
-                    } else {
-                        value = request.getParameter(field.getName());
-                        field.set(obj, Utils.caster(value, field.getType()));
+                        
                     }
 
                     field.setAccessible(false);
@@ -297,26 +295,26 @@ public class FrontController extends HttpServlet {
 
                 reponse[i] = obj;
 
-            }
-            if ((parameter.getType().equals(Redirect.class))) {
+            } else if ((parameter.getType().equals(Redirect.class))) {
                 // throw new Exception("ETU2714 ==> Misy attribut tsy annoté\n");
                 // faire le truc de redirect.
                 System.out.println("Handle attributes");
                 Object obj = Utils.handleRedirectAttribute(parameter, request);
                 reponse[i] = obj;
 
-            } else {
-                paramName = parameter.getDeclaredAnnotation(RequestParam.class).name();
+            } else if (!parameter.isAnnotationPresent(RequestParam.class)) {
                 if (parameter.getType().equals(CustomSession.class)) {
                     reponse[i] = new CustomSession(request.getSession());
-                } else if (parameter.getType().equals(FileUpload.class)) {
+                }
+            } else if (parameter.isAnnotationPresent(RequestParam.class)) {
+                paramName = parameter.getDeclaredAnnotation(RequestParam.class).name();
 
+                if (parameter.getType().equals(FileUpload.class)) {
                     System.out.println("ParamName = " + paramName);
                     reponse[i] = Utils.handleFileUpload(request, paramName);
                 } else {
                     value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
                     reponse[i] = Utils.caster(value, parameter.getType());
-
                 }
             }
             // *** validation **//
