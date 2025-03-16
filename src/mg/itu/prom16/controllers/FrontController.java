@@ -22,6 +22,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mg.itu.prom16.annotations.Att;
 import mg.itu.prom16.annotations.Auth;
+import mg.itu.prom16.annotations.AuthMethod;
 import mg.itu.prom16.annotations.Controller;
 import mg.itu.prom16.annotations.Model;
 import mg.itu.prom16.annotations.Post;
@@ -225,6 +226,12 @@ public class FrontController extends HttpServlet {
                                             // map.setVerb("POST");
                                             verb = "POST";
                                         }
+
+                                        if (methode.isAnnotationPresent(AuthMethod.class)) {
+                                            needAuth = true;
+                                            profile = methode.getDeclaredAnnotation(AuthMethod.class).value();
+                                        }
+
                                         String valeur = methode.getAnnotation(Url.class).value(); // Maka ny url
                                         VerbMethod vm = new VerbMethod(methode, verb);
 
@@ -287,7 +294,7 @@ public class FrontController extends HttpServlet {
                     if (field.isAnnotationPresent(Att.class)) {
                         value = request.getParameter(field.getDeclaredAnnotation(Att.class).name());
                         field.set(obj, Utils.caster(value, field.getType()));
-                        
+
                     }
 
                     field.setAccessible(false);
