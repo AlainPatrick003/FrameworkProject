@@ -1,7 +1,5 @@
 package mg.itu.prom16.session;
 
-import java.util.HashMap;
-
 import jakarta.servlet.http.HttpSession;
 
 public class CustomSession {
@@ -21,6 +19,10 @@ public class CustomSession {
 
     public Object get(String key) {
         return this.session.getAttribute(key);
+    }
+
+    public void invalidate() {
+        this.session.invalidate();
     }
 
     

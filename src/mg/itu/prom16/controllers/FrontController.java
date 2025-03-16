@@ -11,13 +11,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import com.google.gson.Gson;
 
-import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,13 +27,19 @@ import mg.itu.prom16.annotations.Model;
 import mg.itu.prom16.annotations.Post;
 import mg.itu.prom16.annotations.RequestParam;
 import mg.itu.prom16.annotations.Url;
-import mg.itu.prom16.annotations.Validation.*;
+import mg.itu.prom16.annotations.Validation.Valid;
 import mg.itu.prom16.map.Mapping;
 import mg.itu.prom16.session.CustomSession;
+import mg.itu.prom16.util.FileUpload;
+import mg.itu.prom16.util.ParametreMethodes;
+import mg.itu.prom16.util.Redirect;
+import mg.itu.prom16.util.ResponseValidation;
+import mg.itu.prom16.util.Utils;
+import mg.itu.prom16.util.VerbMethod;
 import mg.itu.prom16.views.ModelView;
-import mg.itu.prom16.util.*;
 
 @MultipartConfig
+@WebServlet("/front-controller")
 public class FrontController extends HttpServlet {
 
     private List<String> controller = new ArrayList<>();
@@ -42,13 +47,14 @@ public class FrontController extends HttpServlet {
     boolean checked = false;
     HashMap<String, Mapping> lien = new HashMap<>();
     String error_message;
-    private String hote_name;
+    private static String hote_name;
 
     @Override
     public void init() throws ServletException {
         super.init();
         controllerPackage = getInitParameter("controller-package");
-        this.hote_name = getInitParameter("auth");  
+        // exemple hote_name = "auth"
+        FrontController.hote_name = getInitParameter("auth");
         try {
             this.scan();
         } catch (Exception e) {
@@ -60,11 +66,11 @@ public class FrontController extends HttpServlet {
             throws ServletException, IOException {
         Gson gson = new Gson();
         PrintWriter out = response.getWriter();
-        
+
         String controllerSearched = Utils.getSerarchedController(request.getRequestURL().toString());
         System.out.println("Controleur ici = " + controllerSearched);
         // A effacer
-        request.getSession().setAttribute(this.hote_name, "admin");
+        // request.getSession().setAttribute(this.hote_name, "admin");
         // ******
 
         response.setContentType("text/html");
@@ -75,19 +81,22 @@ public class FrontController extends HttpServlet {
         }
         if (!lien.containsKey(controllerSearched)) {
             out.println("<p>" + "Method not found." + "</p>");
-            // response.sendError(404, "Methode");
         } else {
             Mapping mapping = lien.get(controllerSearched);
             Method methode = null;
-            // out.println("Methode trouvée dans: <strong> " + mapping.getClassName() + "
-            // nombre de methode = "
-            // + mapping.getListeVerbMethode().size() +
-            // "</strong></br>");
             String verb = null;
 
             for (VerbMethod verbMethode : mapping.getListeVerbMethode()) {
-                out.println(verbMethode.getMethode() + " != " + request.getMethod() + " nom // methode = " + verbMethode.getMethode() +"</br>");
-                if (verbMethode.getVerb().equalsIgnoreCase(request.getMethod())) {
+                out.println(verbMethode.getMethode() + " != " + request.getMethod() + " nom // methode = "
+                        + verbMethode.getMethode() + "</br>");
+                if (request.getAttribute("isRedirection") != null
+                        && ((boolean) request.getAttribute("isRedirection"))) {
+                    System.out.println("Is Redirection");
+                    verb = verbMethode.getVerb();
+                    methode = verbMethode.getMethode();
+                    mapping.setClassName(verbMethode.getMethode().getDeclaringClass().getName());
+
+                } else if (verbMethode.getVerb().equalsIgnoreCase(request.getMethod())) {
                     verb = verbMethode.getVerb();
                     methode = verbMethode.getMethode();
                     mapping.setClassName(verbMethode.getMethode().getDeclaringClass().getName());
@@ -119,7 +128,7 @@ public class FrontController extends HttpServlet {
                     System.out.println("Mmiditra ato foana");
                     Parameter[] liste_paramettre = methode.getParameters();
                     // construire la liste d'objet
-                    params = getListeAttribut(liste_paramettre, request, out);
+                    params = getListeAttribut(liste_paramettre, request, response, out);
                     if (!params.getErrorMap().isEmpty()) {
                         // Retrieve the previous ModelView from session if it exists
                         ModelView previousModelView = (ModelView) request.getSession().getAttribute("page_precedent");
@@ -139,10 +148,13 @@ public class FrontController extends HttpServlet {
 
                 response.setContentType("text/json");
                 if (resultat instanceof ModelView) {
-                    
-                    request.getSession().setAttribute("page_precedent", resultat);
-                    Utils.sendModelView((ModelView)resultat, request, response);
 
+                    request.getSession().setAttribute("page_precedent", resultat);
+                    Utils.sendModelView((ModelView) resultat, request, response);
+
+                } else if (resultat instanceof Redirect) {
+                    // handleRedirect
+                    Utils.handleRedirect(((Redirect) resultat), request, response);
                 } else {
                     // out.println("resultat de la methode: " + resultat.toString());
                     String jsonResponse = gson.toJson(resultat);
@@ -215,7 +227,7 @@ public class FrontController extends HttpServlet {
                                         }
                                         String valeur = methode.getAnnotation(Url.class).value(); // Maka ny url
                                         VerbMethod vm = new VerbMethod(methode, verb);
-                                        
+
                                         if (!lien.containsKey(valeur)) { // raha mbola tsy misy
                                             System.out.println("Damn == " + valeur);
 
@@ -253,7 +265,8 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    public ParametreMethodes getListeAttribut(Parameter[] listeParamettre, HttpServletRequest request, PrintWriter out)
+    public ParametreMethodes getListeAttribut(Parameter[] listeParamettre, HttpServletRequest request,
+            HttpServletResponse response, PrintWriter out)
             throws Exception {
 
         Object[] reponse = new Object[listeParamettre.length];
@@ -264,22 +277,17 @@ public class FrontController extends HttpServlet {
         for (Parameter parameter : listeParamettre) {
             String value = "";
             String paramName = "";
-            if (!parameter.isAnnotationPresent(RequestParam.class)
-                    && !parameter.getType().equals(CustomSession.class)) {
-                throw new Exception("ETU2714 ==> Misy attribut tsy annoté\n");
-            }
+
             if (parameter.getType().isAnnotationPresent(Model.class)) {
                 // contruire une instance du model
                 Object obj = parameter.getType().getDeclaredConstructor().newInstance();
-                Field[] attributs = obj.getClass().getFields();
+                Field[] attributs = obj.getClass().getDeclaredFields();
                 for (Field field : attributs) {
                     field.setAccessible(true);
                     if (field.isAnnotationPresent(Att.class)) {
                         value = request.getParameter(field.getDeclaredAnnotation(Att.class).name());
                         field.set(obj, Utils.caster(value, field.getType()));
-                    } else {
-                        value = request.getParameter(field.getName());
-                        field.set(obj, Utils.caster(value, field.getType()));
+                        
                     }
 
                     field.setAccessible(false);
@@ -287,18 +295,26 @@ public class FrontController extends HttpServlet {
 
                 reponse[i] = obj;
 
-            } else {
-                paramName = parameter.getDeclaredAnnotation(RequestParam.class).name();
+            } else if ((parameter.getType().equals(Redirect.class))) {
+                // throw new Exception("ETU2714 ==> Misy attribut tsy annoté\n");
+                // faire le truc de redirect.
+                System.out.println("Handle attributes");
+                Object obj = Utils.handleRedirectAttribute(parameter, request);
+                reponse[i] = obj;
+
+            } else if (!parameter.isAnnotationPresent(RequestParam.class)) {
                 if (parameter.getType().equals(CustomSession.class)) {
                     reponse[i] = new CustomSession(request.getSession());
-                } else if (parameter.getType().equals(FileUpload.class)) {
-                    
+                }
+            } else if (parameter.isAnnotationPresent(RequestParam.class)) {
+                paramName = parameter.getDeclaredAnnotation(RequestParam.class).name();
+
+                if (parameter.getType().equals(FileUpload.class)) {
                     System.out.println("ParamName = " + paramName);
                     reponse[i] = Utils.handleFileUpload(request, paramName);
                 } else {
                     value = request.getParameter(parameter.getDeclaredAnnotation(RequestParam.class).name());
                     reponse[i] = Utils.caster(value, parameter.getType());
-
                 }
             }
             // *** validation **//

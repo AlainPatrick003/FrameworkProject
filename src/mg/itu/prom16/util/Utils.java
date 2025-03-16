@@ -3,7 +3,9 @@ package mg.itu.prom16.util;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import jakarta.servlet.RequestDispatcher;
@@ -52,6 +54,8 @@ public class Utils {
     }
 
     public static Object caster(String value, Class<?> classe) {
+        if (value == null || value.equalsIgnoreCase(""))
+            return null;
 
         if (classe == int.class || classe == Integer.class) {
             return Integer.parseInt(value);
@@ -74,6 +78,8 @@ public class Utils {
             return value.charAt(0);
         } else if (classe == LocalDate.class) {
             return LocalDate.parse(value);
+        } else if (classe == LocalDateTime.class) {
+            return LocalDateTime.parse(value);
         } else {
             return value;
         }
@@ -130,6 +136,7 @@ public class Utils {
             System.out.println(mapping.getProfil() + " != " + req.getSession().getAttribute(hote));
             if (!mapping.getProfil().equals(req.getSession().getAttribute(hote))) {
                 // throw new CustomException.RequestException("unauthorize");
+                System.out.println(mapping.getProfil() + "----!=----------" + req.getSession().getAttribute(hote));
                 throw new Exception("Unauthorize");
             }
         }
@@ -140,5 +147,27 @@ public class Utils {
         String controllerSearched = requestUrlSplitted[requestUrlSplitted.length - 1];
         return url.endsWith("/") ? "/" : url.endsWith("\\") ? "\\" : controllerSearched;
 
+    }
+
+    public static void handleRedirect(Redirect redirect, HttpServletRequest request, HttpServletResponse response)
+            throws Exception {
+        String lien = redirect.getLien();
+        if (lien == null) {
+            return;
+        }
+        RequestDispatcher dispatch = request.getRequestDispatcher(lien);
+        request.setAttribute("isRedirection", true);
+        request.setAttribute("data_redirect", redirect.getData());
+        dispatch.forward(request, response);
+
+    }
+
+    public static Redirect handleRedirectAttribute(Parameter parameter, HttpServletRequest request) throws Exception {
+        Redirect redirect = ((Redirect) parameter.getType().getDeclaredConstructor().newInstance());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = ((Map<String, Object>) request.getAttribute("data_redirect"));
+        redirect.setData(data);
+        return redirect;
     }
 }
